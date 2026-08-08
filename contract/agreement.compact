@@ -1,0 +1,51 @@
+pragma language_version >= 0.16;
+
+import CompactStandardLibrary;
+
+enum Status { PENDING, SIGNED }
+
+struct Agreement {
+  partyA: Bytes<32>,
+  partyBId: Bytes<32>,
+  termsFingerprint: Bytes<32>,
+  status: Status
+}
+
+export ledger agreements: Map<Uint<64>, Agreement>;
+export ledger nextId: Counter;
+
+witness mySecretKey(): Bytes<32>;
+
+circuit publicKey(sk: Bytes<32>): Bytes<32> {
+  return persistentHash<Vector<2, Bytes<32>>>([pad(32, "agreement:pk"), sk]);
+}
+
+export circuit createAgreement(partyBId: Bytes<32>, termsFingerprint: Bytes<32>): [] {
+  const myId = publicKey(mySecretKey());
+  const id = nextId;
+  agreements.insert(disclose(id), Agreement {
+    partyA: disclose(myId),
+    partyBId: disclose(partyBId),
+    termsFingerprint: disclose(termsFingerprint),
+    status: Status.PENDING
+  });
+  nextId.increment(1);
+}
+
+export circuit signAgreement(id: Uint<64>): [] {
+  const myId = publicKey(mySecretKey());
+  const agreement = agreements.lookup(disclose(id));
+  assert(agreement.partyBId == myId, "only Party B can sign this agreement");
+  assert(agreement.status == Status.PENDING, "agreement is already signed");
+  agreements.insert(disclose(id), Agreement {
+    partyA: agreement.partyA,
+    partyBId: agreement.partyBId,
+    termsFingerprint: agreement.termsFingerprint,
+    status: Status.SIGNED
+  });
+}
+
+export circuit isSigned(id: Uint<64>): [Boolean] {
+  const agreement = agreements.lookup(disclose(id));
+  return [agreement.status == Status.SIGNED];
+}

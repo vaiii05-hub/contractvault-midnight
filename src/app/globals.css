@@ -1,0 +1,146 @@
+@import "tailwindcss";
+
+/* ============================================================
+   ContractVault — design tokens
+   Palette: deep ink/navy vault + warm paper documents.
+   One accent (`seal`, a quiet patinated green) used only for
+   signed/success states. Brass for pending/waiting.
+   ============================================================ */
+
+:root {
+  /* Ink (vault surfaces) */
+  --ink-950: #070d1a;
+  --ink-900: #0b1424;
+  --ink-850: #0f1b30;
+  --ink-800: #15233d;
+  --ink-700: #1d2f4d;
+  --ink-600: #2a3f63;
+  --line: #26354f;
+  --line-soft: #1c2940;
+
+  /* Text */
+  --ink-text: #e9eef7;
+  --ink-muted: #93a1bc;
+  --ink-faint: #5c6e8e;
+
+  /* Paper (the document surface) */
+  --paper: #f5f1e6;
+  --paper-deep: #ece4cf;
+  --paper-ink: #2c2a23;
+  --paper-line: #d8cfba;
+
+  /* Seal accent — signed / success only */
+  --seal: #3eaf87;
+  --seal-bright: #9be7c8;
+  --seal-dim: #123a2e;
+
+  /* Brass — pending / waiting */
+  --brass: #c8a86e;
+  --brass-bright: #e9d3a2;
+  --brass-dim: #33291a;
+
+  /* Error */
+  --danger: #e07a6e;
+  --danger-bright: #f0a59b;
+  --danger-dim: #381f1b;
+
+  --background: #070d1a;
+  --foreground: #e9eef7;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+
+  --color-ink-950: var(--ink-950);
+  --color-ink-900: var(--ink-900);
+  --color-ink-850: var(--ink-850);
+  --color-ink-800: var(--ink-800);
+  --color-ink-700: var(--ink-700);
+  --color-ink-600: var(--ink-600);
+  --color-line: var(--line);
+  --color-line-soft: var(--line-soft);
+  --color-ink-text: var(--ink-text);
+  --color-ink-muted: var(--ink-muted);
+  --color-ink-faint: var(--ink-faint);
+  --color-paper: var(--paper);
+  --color-paper-deep: var(--paper-deep);
+  --color-paper-ink: var(--paper-ink);
+  --color-paper-line: var(--paper-line);
+  --color-seal: var(--seal);
+  --color-seal-bright: var(--seal-bright);
+  --color-seal-dim: var(--seal-dim);
+  --color-brass: var(--brass);
+  --color-brass-bright: var(--brass-bright);
+  --color-brass-dim: var(--brass-dim);
+  --color-danger: var(--danger);
+  --color-danger-bright: var(--danger-bright);
+  --color-danger-dim: var(--danger-dim);
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-fraunces), Georgia, "Times New Roman", serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, SFMono-Regular, monospace;
+}
+
+body {
+  background-color: var(--ink-950);
+  background-image:
+    radial-gradient(1100px 520px at 50% -12%, rgb(62 175 135 / 0.07), transparent 60%),
+    radial-gradient(900px 460px at 110% 115%, rgb(200 168 110 / 0.05), transparent 55%);
+  background-attachment: fixed;
+  color: var(--ink-text);
+  font-family: var(--font-sans);
+}
+
+::selection {
+  background: rgb(62 175 135 / 0.35);
+}
+
+/* Accessible keyboard focus everywhere, plus per-control rings in utilities. */
+:focus-visible {
+  outline: 2px solid var(--seal-bright);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* Paper surface — the actual agreement document */
+.paper-surface {
+  background-color: var(--paper);
+  color: var(--paper-ink);
+  border: 1px solid var(--paper-line);
+}
+.paper-surface :focus-visible {
+  outline-color: var(--paper-ink);
+}
+
+/* Rotated ink-stamp, shown once on a sealed agreement */
+.seal-stamp {
+  display: inline-block;
+  border: 2px solid var(--seal);
+  color: var(--seal);
+  border-radius: 8px;
+  padding: 0.4rem 0.9rem;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 0.7rem;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  transform: rotate(-12deg);
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+/* Spinner */
+.spinner {
+  width: 22px;
+  height: 22px;
+  border-radius: 9999px;
+  border: 2px solid var(--line);
+  border-top-color: var(--seal);
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
