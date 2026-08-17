@@ -144,23 +144,34 @@ export circuit signAgreement(id: Uint<64>): [] {
 ## Architecture
 
 Agreement terms (typed by Party A)
-|
-v
-Fingerprint computed client-side — terms never leave the browser
-|
-v
-Compact smart contract (createAgreement) -- deployed on Midnight Preview
-|
-v
-On-chain: agreements map stores { partyA, partyB, termsFingerprint, status }
-|
-v
-Party B calls signAgreement(id) -- identity checked via derived public key,
-status flips Pending -> Signed
-|
-v
-Anyone can call isSigned(id) to verify -- without ever seeing the terms
 
+↓
+
+Fingerprint computed client-side — terms never leave the browser
+
+↓
+
+Compact smart contract (`createAgreement`) — deployed on Midnight Preview
+
+↓
+
+On-chain: `agreements` map stores:
+- `partyA`
+- `partyB`
+- `termsFingerprint`
+- `status`
+
+↓
+
+Party B calls `signAgreement(id)` — identity checked via derived public key
+
+↓
+
+Status flips: `Pending` → `Signed`
+
+↓
+
+Anyone can call `isSigned(id)` to verify — without ever seeing the terms
 
 ---
 
