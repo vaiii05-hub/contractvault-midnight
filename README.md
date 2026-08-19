@@ -199,6 +199,20 @@ CONTRACTVAULT_SECRET=$(openssl rand -hex 32) npm run deploy
 This generates a fresh wallet, funds it on Preview via the faucet, registers DUST (fee tokens) from the NIGHT balance, and submits the deployment transaction.
 
 ---
+## Testing
+
+`contract/agreement.test.ts` exercises the compiled contract's circuits directly against `compact-runtime`'s in-memory `CircuitContext` — no network, wallet, or proof server required. It covers:
+
+- Creating an agreement and verifying the resulting ledger state (status `PENDING`, correct `partyA`/`partyB`/terms fingerprint)
+- Signing by the correct Party B, verifying status flips to `SIGNED` and `isSigned` returns `true`
+- Rejecting a second sign attempt on an already-signed agreement
+- Rejecting a sign attempt from an unauthorized signer
+
+Run it with:
+
+```bash
+npm test
+```
 
 ## Engineering Notes
 
