@@ -238,7 +238,8 @@ This confirms the contract, application logic, and transaction-building code are
 | On-chain deployment | Live on Preview testnet |
 | Agreement creation and signing (local proof server) | Working |
 | Public verification (`isSigned`) | Implemented |
-| End-to-end submission via 1AM's hosted proving service | Blocked (1AM-side issue, see Engineering Notes) | Contract logic tests (`npm test`) | Passing (3/3) |
+| End-to-end submission via 1AM's hosted proving service | Blocked (1AM-side issue, see Engineering Notes)| 
+| Contract logic tests (`npm test`) | Passing (3/3) |
 
 ---
 
