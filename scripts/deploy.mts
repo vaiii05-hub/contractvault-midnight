@@ -52,14 +52,14 @@ import { CompiledContract } from "@midnight-ntwrk/compact-js";
 // The wallet SDK syncs over WebSocket; expose `ws` as the global implementation.
 (globalThis as { WebSocket?: unknown }).WebSocket = WebSocket;
 
-setNetworkId("preview");
+setNetworkId("preprod");
 
 const CONFIG = {
-  indexer: "https://indexer.preview.midnight.network/api/v4/graphql",
-  indexerWS: "wss://indexer.preview.midnight.network/api/v4/graphql/ws",
-  node: "https://rpc.preview.midnight.network",
+  indexer: "https://indexer.preprod.midnight.network/api/v4/graphql",
+  indexerWS: "wss://indexer.preprod.midnight.network/api/v4/graphql/ws",
+  node: "https://rpc.preprod.midnight.network",
   proofServer: process.env.PROOF_SERVER_URL ?? "http://127.0.0.1:6300",
-  faucet: "https://midnight-tmnight-preview.nethermind.dev/",
+  faucet: "https://faucet.preprod.midnight.network/",
 };
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -238,7 +238,7 @@ async function main() {
     zkConfigPath,
   );
 
-  console.log("─── Deploying agreement contract to Midnight Preview ───\n");
+    console.log("─── Deploying agreement contract to Midnight Preprod ───\n");
 
   const mnemonic = process.env.MNEMONIC;
   const seed = mnemonic
@@ -291,7 +291,7 @@ async function main() {
   const contractAddress = deployed.deployTxData.public.contractAddress;
   console.log(`\n  ✅ Contract deployed!`);
   console.log(`  Contract address: ${contractAddress}`);
-  console.log(`  Explorer: https://preview.midnightexplorer.com/contract/${contractAddress}`);
+    console.log(`  Explorer: https://preprod.midnightexplorer.com/contract/${contractAddress}`);
   console.log(`  partyA secret: ${secretHex}`);
 
   fs.writeFileSync(
@@ -299,7 +299,7 @@ async function main() {
     JSON.stringify(
       {
         contractAddress,
-        network: "preview",
+        network: "preprod",
         seed,
         contractVaultSecret: secretHex,
         deployedAt: new Date().toISOString(),

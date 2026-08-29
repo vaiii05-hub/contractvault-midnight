@@ -1,30 +1,42 @@
 // src/lib/wallet.ts
-// Connects to the 1AM wallet (a Midnight DApp Connector implementation)
-// using the official @midnight-ntwrk/dapp-connector-api types, and manages
-// the local secret key used as this app's witness identity.
+// Connects to a Midnight DApp Connector wallet (e.g. Lace) using the
+// official @midnight-ntwrk/dapp-connector-api types, and manages the
+// local secret key used as this app's witness identity.
+//
+// NOTE: per Midnight's official docs, wallets inject their API under
+// window.midnight keyed by a freshly generated UUID (not a fixed name
+// like "lace" or "mnLace"), so we enumerate window.midnight and pick
+// the first available wallet, rather than hardcoding a key.
 
 import type { InitialAPI, ConnectedAPI } from "@midnight-ntwrk/dapp-connector-api";
 
 const SECRET_KEY_STORAGE_KEY = "contractvault_secret_key";
-const WALLET_ID = "1am";
-const NETWORK_ID = "preview";
+const NETWORK_ID = "preprod";
 
-function get1AMWallet(): InitialAPI | null {
+function getAvailableWallet(): InitialAPI | null {
   if (typeof window === "undefined") return null;
-  return window.midnight?.[WALLET_ID] ?? null;
+  if (!window.midnight) return null;
+
+  const entries = Object.entries(window.midnight).filter(
+    ([, w]) => !!w && typeof w === "object" && "apiVersion" in w
+  ) as [string, InitialAPI][];
+
+  // Prefer Lace: it's injected under a generated UUID key rather than a
+  // fixed name (per Midnight's official docs), so anything NOT keyed "1am"
+  // is treated as Lace/other-compatible-wallet and preferred over 1AM.
+  const preferred = entries.find(([key]) => key !== "1am");
+  if (preferred) return preferred[1];
+
+  return entries[0]?.[1] ?? null;
 }
 
-// 1AM rejects concurrent connect() calls with "Connection request already
-// pending", and React Strict Mode double-fires effects in development.
-// We therefore keep a single in-flight connect promise (reused by any
-// concurrent caller) and cache the connected API so we never re-connect.
 let walletConnectPromise: Promise<ConnectedAPI | null> | null = null;
 let connectedApi: ConnectedAPI | null = null;
 
-async function connect1AM(): Promise<ConnectedAPI | null> {
-  const wallet = get1AMWallet();
+async function connectMidnightWallet(): Promise<ConnectedAPI | null> {
+  const wallet = getAvailableWallet();
   if (!wallet) {
-    console.warn(`1AM wallet not found. window.midnight =`, window.midnight);
+    console.warn(`No Midnight wallet found. window.midnight =`, window.midnight);
     return null;
   }
 
@@ -40,7 +52,7 @@ function ensureConnected(): Promise<ConnectedAPI | null> {
   if (connectedApi) return Promise.resolve(connectedApi);
 
   if (!walletConnectPromise) {
-    walletConnectPromise = connect1AM().finally(() => {
+    walletConnectPromise = connectMidnightWallet().finally(() => {
       walletConnectPromise = null;
     });
   }
@@ -55,8 +67,6 @@ async function getAddress(api: ConnectedAPI): Promise<string | null> {
     const message = err instanceof Error ? err.message : String(err);
     console.error("Failed to read unshielded address:", message);
 
-    // The wallet is syncing its local state and is rate-limiting us.
-    // Retry exactly once after a real delay instead of hammering it.
     if (/syncing/i.test(message)) {
       await new Promise((resolve) => setTimeout(resolve, 3000));
       try {
@@ -73,20 +83,7 @@ async function getAddress(api: ConnectedAPI): Promise<string | null> {
   }
 }
 
-// ---------- Wallet connection ----------
-
-// getUnshieldedAddress() is rate-limited by the wallet while it syncs, so
-// resolve the address at most once per page load and reuse the result.
-// cachedAddress is tri-state:
-//   undefined — not resolved this session (only true on a fresh page load)
-//   null      — resolved to "not connected" (wallet absent or fetch failed)
-//   string    — resolved connected address
-// After the first resolution, later calls return the cached value without
-// touching the wallet. The wallet is only re-contacted again on an explicit
-// Connect click (connectWallet) or a full page reload (module re-evaluates).
-// Concurrent callers (e.g. React Strict Mode double-firing the home page
-// effect) share the same in-flight promise instead of firing duplicates.
-let cachedAddress: string | null | undefined = undefined; // undefined = not resolved yet
+let cachedAddress: string | null | undefined = undefined;
 let addressPromise: Promise<string | null> | null = null;
 
 async function fetchAddress(): Promise<string | null> {
@@ -114,25 +111,19 @@ export function getConnectedAddress(): Promise<string | null> {
   return addressPromise;
 }
 
-// Returns the live ConnectedAPI from the 1AM wallet, reusing the same cached
-// connection as the address helpers. Contract calls need it for proving,
-// balancing, and submission (see src/lib/contract.ts).
 export async function getConnectedAPI(): Promise<ConnectedAPI | null> {
   const api = await ensureConnected();
   if (api) connectedApi = api;
   return api;
 }
 
-// Explicit user action (Connect button click): always re-contact the wallet
-// for a fresh address, bypassing the cached value, and cache the result so
-// subsequent navigations don't hit the wallet again.
 export async function connectWallet(): Promise<string | null> {
   if (typeof window === "undefined") return null;
 
   const api = await ensureConnected();
   if (!api) {
     cachedAddress = null;
-    alert("1AM wallet not found or connection failed. Please install/enable it and try again.");
+    alert("No Midnight wallet found or connection failed. Please install/enable Lace and try again.");
     return null;
   }
 
@@ -142,22 +133,12 @@ export async function connectWallet(): Promise<string | null> {
   return address;
 }
 
-// Ends the local session: drops the cached connection and marks the address
-// as resolved-to-disconnected (null, not undefined) so the next page
-// navigation shows the disconnected state without re-contacting the wallet.
-// (The wallet's own connection is managed by the 1AM extension; this resets
-// the DApp's view of it. Reconnecting requires an explicit Connect click.)
 export function disconnectWallet(): void {
   cachedAddress = null;
   connectedApi = null;
   walletConnectPromise = null;
   addressPromise = null;
 }
-
-// ---------- Local secret key (the `mySecretKey` witness) ----------
-// This is NOT the 1AM-wallet address. It's a per-browser secret that
-// identifies "you" inside the contract (partyA / partyBId are derived from
-// this, via the contract's own publicKey circuit — not computed here).
 
 function bytesToHex(bytes: Uint8Array): string {
   return Array.from(bytes)
@@ -174,7 +155,6 @@ function hexToBytes(hex: string): Uint8Array {
   return out;
 }
 
-// Returns the 32-byte secret as a hex string, creating one on first use.
 export function getOrCreateLocalSecretKey(): string {
   if (typeof window === "undefined") {
     throw new Error("getOrCreateLocalSecretKey must run in the browser");
@@ -191,7 +171,6 @@ export function getOrCreateLocalSecretKey(): string {
   return hex;
 }
 
-// Returns the secret as raw bytes.
 export function getLocalSecretKeyBytes(): Uint8Array {
   const hex = getOrCreateLocalSecretKey();
   return hexToBytes(hex);
