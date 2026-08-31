@@ -55,8 +55,8 @@ import { CompiledContract } from "@midnight-ntwrk/compact-js";
 setNetworkId("preprod");
 
 const CONFIG = {
-  indexer: "https://indexer.preprod.midnight.network/api/v4/graphql",
-  indexerWS: "wss://indexer.preprod.midnight.network/api/v4/graphql/ws",
+    indexer: "https://indexer.preprod.midnight.network/api/v3/graphql",
+  indexerWS: "wss://indexer.preprod.midnight.network/api/v3/graphql/ws",
   node: "https://rpc.preprod.midnight.network",
   proofServer: process.env.PROOF_SERVER_URL ?? "http://127.0.0.1:6300",
   faucet: "https://faucet.preprod.midnight.network/",

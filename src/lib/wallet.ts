@@ -11,7 +11,7 @@
 import type { InitialAPI, ConnectedAPI } from "@midnight-ntwrk/dapp-connector-api";
 
 const SECRET_KEY_STORAGE_KEY = "contractvault_secret_key";
-const NETWORK_ID = "preprod";
+const NETWORK_ID = "preview";
 
 function getAvailableWallet(): InitialAPI | null {
   if (typeof window === "undefined") return null;
@@ -24,7 +24,9 @@ function getAvailableWallet(): InitialAPI | null {
   // Prefer Lace: it's injected under a generated UUID key rather than a
   // fixed name (per Midnight's official docs), so anything NOT keyed "1am"
   // is treated as Lace/other-compatible-wallet and preferred over 1AM.
-  const preferred = entries.find(([key]) => key !== "1am");
+    // Prefer 1AM specifically: it reliably sponsors/generates DUST on
+  // Preview, whereas other wallets have shown intermittent DUST issues.
+  const preferred = entries.find(([key]) => key === "1am");
   if (preferred) return preferred[1];
 
   return entries[0]?.[1] ?? null;
