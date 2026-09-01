@@ -162,32 +162,58 @@ export async function createAgreement(input: CreateAgreementInput): Promise<Agre
 export async function signAgreement(agreement: Agreement): Promise<Agreement> {
   buildSignAgreementPayload(agreement); // validates, throws if not allowed
 
+  const idBigInt = BigInt(agreement.id);
+
+  const contract = await getDeployedContract();
+  let result!: Awaited<ReturnType<typeof contract.callTx.signAgreement>>;
+  try {
+    result = await contract.callTx.signAgreement(idBigInt);
+  } catch (err) {
+    dumpError("signAgreement callTx failed", err);
+    throw err;
+  }
+
+  const state = ledger(result.public.nextContractState);
+  const entry = state.agreements.lookup(idBigInt);
+
+  console.log("[api] signAgreement succeeded", {
+    txId: result.public?.txId ?? result.txId,
+    id: agreement.id,
+    status: entry.status,
+  });
+
+  const updated: Agreement = {
+    ...agreement,
+    partyA: bytesToHex(entry.partyA),
+    partyBId: bytesToHex(entry.partyBId),
+    termsFingerprint: bytesToHex(entry.termsFingerprint),
+    status: entry.status === 1 ? AgreementStatus.SIGNED : AgreementStatus.PENDING,
+  };
+
   const all = readMockAgreements();
   const idx = all.findIndex((a) => a.id === agreement.id);
   if (idx === -1) throw new Error("Agreement not found.");
-
-  all[idx].status = AgreementStatus.SIGNED;
+  all[idx] = updated;
   writeMockAgreements(all);
-  return all[idx];
-}
 
-// ---------- isSigned ----------
-export async function isSigned(id: string): Promise<boolean> {
-  const all = readMockAgreements();
-  const found = all.find((a) => a.id === id);
-  return found?.status === AgreementStatus.SIGNED;
+  return updated;
 }
-
-// ---------- getMyAgreements ----------
-// Returns agreements where the current browser is either Party A or Party B.
-export async function getMyAgreements(): Promise<Agreement[]> {
-  const myId = await getMyPartyId();
-  const all = readMockAgreements();
-  return all.filter((a) => a.partyA === myId || a.partyBId === myId);
-}
-
 // ---------- getAgreementById ----------
 export async function getAgreementById(id: string): Promise<Agreement | null> {
   const all = readMockAgreements();
   return all.find((a) => a.id === id) || null;
+}
+
+// ---------- getMyAgreements ----------
+
+
+// ---------- getMyAgreements ----------
+export async function getMyAgreements(): Promise<Agreement[]> {
+  const myPartyId = await getMyPartyId();
+  const all = readMockAgreements();
+  return all.filter(
+    (a) =>
+      a.partyA.toLowerCase() === myPartyId.toLowerCase() ||
+      a.partyBId.toLowerCase() === myPartyId.toLowerCase()
+  );
 }
