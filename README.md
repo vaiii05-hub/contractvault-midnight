@@ -12,11 +12,23 @@ Right now, when two people want proof they agreed to something, they either use 
 
 ---
 
+## Live Demo
+
+- **Live site:** [contractvault-midnight.vercel.app](https://contractvault-midnight.vercel.app)
+- **Demo video:** [[add link here once uploaded](https://drive.google.com/file/d/1ypfY0VFVkpUA3Toj-vwsa_78pKeX1xAb/view?usp=sharing)]
+
+Note: the live site's proof server runs on Render's free tier, which spins down after periods of inactivity. The first transaction after idle time may take 30–60 seconds while it wakes up — this is expected, not an error.
+
+---
+
 ## Live Deployment
 
 - **Network:** Midnight Preview Testnet
+
+  The public Midnight test network is referred to as "Preview" in current tooling and documentation. This project targets Preview rather than Preprod, based on the actual infrastructure and endpoints available at the time of building.
+
 - **Deployed Contract Address:** `bac2223389e3479fa28736ce49a69c53842b69940c0a7a1161480e53c7020439`
-- **Explorer:** [preview.midnightexplorer.com](https://preview.midnightexplorer.com/contract/bac2223389e3479fa28736ce49a69c53842b69940c0a7a1161480e53c7020439)
+- **Verified transaction (signAgreement):** [explorer.1am.xyz](https://explorer.1am.xyz/tx/8e7cf4bfbbf7f1629fe0a7b6028e86a690db9bb39343a5f20b2594c646f0dc16)
 - **Wallet Integration:** 1AM Wallet
 
 ![Explorer confirmation](./screenshots/explorer-confirmation.png)
@@ -119,6 +131,19 @@ export circuit signAgreement(id: Uint<64>): [] {
 
 ---
 
+## Privacy Behavior: What Can Be Verified Publicly
+
+This is the core privacy claim, and it can be independently verified by anyone, without any special access:
+
+1. Open the verified transaction above at [explorer.1am.xyz](https://explorer.1am.xyz/tx/8e7cf4bfbbf7f1629fe0a7b6028e86a690db9bb39343a5f20b2594c646f0dc16).
+2. The explorer confirms the `signAgreement()` circuit was called successfully, and shows the transaction hash, block number, and fees paid.
+3. At no point does the explorer, or any other public viewer, ever see the agreement's actual terms — only the `termsFingerprint` (a hash) is present on-chain.
+4. Anyone can also call `isSigned(id)` directly against the contract and receive a true/false answer, without needing to be Party A or Party B, and without the response ever containing the underlying terms.
+
+This demonstrates the intended behavior: proof that an agreement exists and was signed is fully public, while the content of the agreement remains known only to the two parties involved.
+
+---
+
 ## Features
 
 - **Private terms, public proof** — only a fingerprint of the agreement is ever recorded on-chain; the text itself never touches the ledger
@@ -136,7 +161,7 @@ export circuit signAgreement(id: Uint<64>): [] {
 - **Smart Contract:** Compact (Midnight's ZK smart contract language)
 - **Blockchain:** Midnight Network (Preview testnet)
 - **Wallet:** 1AM Wallet (`dapp-connector-api`)
-- **Proof Generation:** Local proof server (`midnightntwrk/proof-server`)
+- **Proof Generation:** `midnightntwrk/proof-server:8.0.3` — local via Docker for development, and publicly hosted on Render for the live deployment
 - **Key packages:** `@midnight-ntwrk/compact-js`, `@midnight-ntwrk/compact-runtime`, `@midnight-ntwrk/midnight-js-contracts`, `@midnight-ntwrk/ledger-v8`, `@midnight-ntwrk/wallet-sdk-facade`
 
 ---
@@ -190,6 +215,8 @@ npm run dev
 
 Open the app, click Connect Wallet, make sure your 1AM wallet is on the Preview network with testnet funds (via faucet), then go to New Agreement to create your first private agreement.
 
+By default, the app proxies proving requests to `http://127.0.0.1:6300`. To point it at a different proof server (for example, the hosted Render instance used in production), set the `PROOF_SERVER_URL` environment variable before running.
+
 ## Deploying the Contract
 
 ```bash
@@ -199,6 +226,7 @@ CONTRACTVAULT_SECRET=$(openssl rand -hex 32) npm run deploy
 This generates a fresh wallet, funds it on Preview via the faucet, registers DUST (fee tokens) from the NIGHT balance, and submits the deployment transaction.
 
 ---
+
 ## Testing
 
 `contract/agreement.test.ts` exercises the compiled contract's circuits directly against `compact-runtime`'s in-memory `CircuitContext` — no network, wallet, or proof server required. It covers:
@@ -218,13 +246,14 @@ npm test
 
 Getting the Compact contract's build output correctly wired into a TypeScript deploy script surfaced a real API quirk: `CompiledContract.make()` returns an object whose prototype carries `.pipe()`, but `withWitnesses()` and `withCompiledFileAssets()` are Effect-style dual combinators that spread the object into a plain value, dropping the prototype and with it `.pipe`. Fixed by switching to nested data-first calls (`withCompiledFileAssets(withWitnesses(make(...), witnesses), zkConfigPath)`) instead of chaining `.pipe(...)`.
 
-Full end-to-end transaction submission directly through 1AM's own hosted proving service was blocked by an issue on 1AM's side, isolated through direct comparison against a local proof server:
+Full end-to-end transaction submission directly through 1AM's own hosted proving service was initially blocked by an issue on 1AM's side, isolated through direct comparison against a local proof server:
 
 1. 1AM's hosted proof service initially rejected valid proofs with `Custom error 115: InvalidProof`. Confirmed as a service-side compatibility issue, not a contract bug, by successfully proving the same circuits against a local proof server instead.
 2. Rerouting the app's proving step to a local proof server (proxied through a same-origin API route) resolved this entirely — the contract's own proof now generates and verifies correctly.
-3. A second, related error surfaced during fee payment: `Custom error 170: InvalidDustSpendProof`. This proof is generated internally by the 1AM wallet itself for its DUST fee, isn't currently routed through the local proof server, and appears to share the same underlying compatibility issue.
 
-This confirms the contract, application logic, and transaction-building code are correct — the same circuits prove and verify successfully outside 1AM's specific proving path.
+For the production deployment, since a browser on the live site cannot reach a proof server running on a developer's own laptop, the same `midnightntwrk/proof-server:8.0.3` image was deployed as a public web service on Render. The app's proof proxy route reads its target from the `PROOF_SERVER_URL` environment variable, so the deployed frontend on Vercel points at this hosted proof server instead of `localhost`. This was confirmed working end-to-end: agreements can be created and signed directly from the live site, with real transactions verifiable on-chain.
+
+A separate, related error was also observed during fee payment: `Custom error 170: InvalidDustSpendProof`. This proof is generated internally by the 1AM wallet itself for its DUST fee and is not routed through the application's own proof server; it appears to share the same underlying compatibility issue with 1AM's hosted proving path specifically, and did not affect the application's own circuits once local/hosted proving was used.
 
 ---
 
@@ -237,8 +266,8 @@ This confirms the contract, application logic, and transaction-building code are
 | Wallet integration (1AM) | Working |
 | On-chain deployment | Live on Preview testnet |
 | Agreement creation and signing (local proof server) | Working |
+| Agreement creation and signing (live site, hosted proof server) | Working |
 | Public verification (`isSigned`) | Implemented |
-| End-to-end submission via 1AM's hosted proving service | Blocked (1AM-side issue, see Engineering Notes) | 
 | Contract logic tests (`npm test`) | Passing (3/3) |
 
 ---
@@ -259,7 +288,7 @@ page.tsx Home / Vault
 new-agreement/ Create agreement form
 my-agreements/ Agreement list
 agreement/[id]/ Agreement detail and sign
-api/proof/ Local proof server proxy route
+api/proof/ Proof server proxy route
 api/zk/ ZK key material serving route
 lib/
 api.ts Application logic (create, sign, list)
