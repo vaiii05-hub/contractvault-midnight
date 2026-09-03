@@ -15,9 +15,11 @@ Right now, when two people want proof they agreed to something, they either use 
 ## Live Demo
 
 - **Live site:** [contractvault-midnight.vercel.app](https://contractvault-midnight.vercel.app)
-- **Demo video:** [[add link here once uploaded](https://drive.google.com/file/d/1ypfY0VFVkpUA3Toj-vwsa_78pKeX1xAb/view?usp=sharing)]
+- **Demo video:** [Watch here](https://drive.google.com/file/d/1ypfY0VFVkpUA3Toj-vwsa_78pKeX1xAb/view?usp=sharing)
 
 Note: the live site's proof server runs on Render's free tier, which spins down after periods of inactivity. The first transaction after idle time may take 30–60 seconds while it wakes up — this is expected, not an error.
+
+The 1AM wallet's connection to the network can occasionally return an `InternalError` (a documented error code in the Midnight DApp Connector API, meaning the connector could not process the request internally on the wallet's side). This has been observed intermittently during development and is outside the application's control. If the live demo does not respond, please retry after a short wait, or refer to the demo video and the verified transaction below, both of which show the full create-and-sign flow succeeding end-to-end.
 
 ---
 
@@ -266,7 +268,7 @@ A separate, related error was also observed during fee payment: `Custom error 17
 | Wallet integration (1AM) | Working |
 | On-chain deployment | Live on Preview testnet |
 | Agreement creation and signing (local proof server) | Working |
-| Agreement creation and signing (live site, hosted proof server) | Working |
+| Agreement creation and signing (live site, hosted proof server) | Working (verified) — 1AM's wallet connector intermittently returns InternalError; see Live Demo note |
 | Public verification (`isSigned`) | Implemented |
 | Contract logic tests (`npm test`) | Passing (3/3) |
 
