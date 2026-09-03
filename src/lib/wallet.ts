@@ -42,10 +42,15 @@ async function connectMidnightWallet(): Promise<ConnectedAPI | null> {
     return null;
   }
 
-  try {
-    return await wallet.connect(NETWORK_ID);
+    try {
+    console.log("[DEBUG] Attempting wallet.connect with:", NETWORK_ID);
+    const result = await wallet.connect(NETWORK_ID);
+    console.log("[DEBUG] wallet.connect SUCCESS:", result);
+    return result;
   } catch (err) {
     console.error(`wallet.connect("${NETWORK_ID}") failed:`, err);
+    console.error("[DEBUG] Error keys:", Object.keys(err as object));
+    console.error("[DEBUG] Error JSON:", JSON.stringify(err, Object.getOwnPropertyNames(err), 2));
     return null;
   }
 }
