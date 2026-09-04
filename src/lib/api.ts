@@ -23,6 +23,23 @@ import { getLocalSecretKeyBytes } from "./wallet";
 // pages don't need to change later.
 // =====================================================================
 
+async function retryOnTransientError<T>(fn: () => Promise<T>, retries = 2, delayMs = 1500): Promise<T> {
+  let lastErr: unknown;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastErr = err;
+      const message = err instanceof Error ? err.message : String(err);
+      const isTransient = /request failed|internalerror/i.test(message);
+      if (!isTransient || attempt === retries) throw err;
+      console.warn(`[retry] Transient error, retrying (${attempt + 1}/${retries})...`, message);
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+  }
+  throw lastErr;
+}
+
 const MOCK_STORAGE_KEY = "contractvault_mock_agreements";
 
 function readMockAgreements(): Agreement[] {
@@ -103,7 +120,9 @@ export async function createAgreement(input: CreateAgreementInput): Promise<Agre
   const contract = await getDeployedContract();
   let result!: Awaited<ReturnType<typeof contract.callTx.createAgreement>>;
   try {
-    result = await contract.callTx.createAgreement(partyBIdBytes, termsFingerprintBytes);
+       result = await retryOnTransientError(() =>
+      contract.callTx.createAgreement(partyBIdBytes, termsFingerprintBytes)
+    );
   } catch (err) {
     // The wallet/network wraps real failures (e.g. "Invalid Transaction") in
     // nested error objects; dump the whole cause chain for diagnosis. The RPC
