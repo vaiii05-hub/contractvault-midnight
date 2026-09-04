@@ -19,7 +19,7 @@ Right now, when two people want proof they agreed to something, they either use 
 
 Note: the live site's proof server runs on Render's free tier, which spins down after periods of inactivity. The first transaction after idle time may take 30–60 seconds while it wakes up — this is expected, not an error.
 
-The 1AM wallet's connection to the network can occasionally return an `InternalError` (a documented error code in the Midnight DApp Connector API, meaning the connector could not process the request internally on the wallet's side). This has been observed intermittently during development and is outside the application's control. If the live demo does not respond, please retry after a short wait, or refer to the demo video and the verified transaction below, both of which show the full create-and-sign flow succeeding end-to-end.
+The 1AM wallet's connection to the network can occasionally return an `InternalError` (a documented error code in the Midnight DApp Connector API, meaning the connector could not process the request internally on the wallet's side). This has been observed intermittently during development and is outside the application's control. If the live demo does not respond, please retry after a short wait, or refer to the demo video and the verified transaction below, both of which show the full create-and-sign flow succeeding end-to-end.As a mitigation, the application now automatically retries transient `InternalError` failures (up to 2 retries with a short delay) before surfacing an error to the user, which has significantly reduced how often this is encountered in practice.
 
 ---
 
